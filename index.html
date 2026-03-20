@@ -1,315 +1,505 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Mapa Red Natura 2000</title>
+  <meta charset="utf-8"/>
+  <title>Red Natura 2000</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; }
-    #map { height: 100vh; width: 100%; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#111}
+    #map{height:100vh;width:100%}
 
-    /* Panel lateral */
-    #panel {
-      position: absolute; top: 10px; right: 10px; z-index: 1000;
-      background: white; padding: 12px 14px; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 12px; min-width: 210px;
+    /* Panel principal */
+    #panel{
+      position:absolute;top:10px;right:10px;z-index:1000;
+      background:#fff;border-radius:8px;
+      box-shadow:0 3px 12px rgba(0,0,0,.4);
+      font-size:12px;width:230px;overflow:hidden;
     }
-    #panel h3 { font-size: 13px; margin-bottom: 8px; color: #333; }
-    #panel label { display: flex; align-items: center; margin: 5px 0; cursor: pointer; gap: 6px; }
-    #panel input[type=checkbox] { margin: 0; }
-    .dot { display: inline-block; width: 14px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-    #panel hr { margin: 8px 0; border: none; border-top: 1px solid #ddd; }
-    #panel .note { color: #888; font-size: 10px; line-height: 1.4; }
+    #panel-header{
+      background:#1a5276;color:#fff;padding:10px 12px;
+      font-weight:bold;font-size:13px;
+    }
+    #panel-body{padding:10px 12px}
+    #panel label{display:flex;align-items:center;gap:7px;margin:5px 0;cursor:pointer}
+    #panel input[type=checkbox]{margin:0;flex-shrink:0}
+    .dot{width:14px;height:10px;border-radius:2px;flex-shrink:0;border:1px solid rgba(0,0,0,.2)}
+    #panel hr{margin:8px 0;border:none;border-top:1px solid #eee}
 
-    /* Popup personalizado */
-    .popup-content { font-size: 12px; min-width: 220px; max-width: 320px; }
-    .popup-content h4 { font-size: 13px; margin: 0 0 8px; color: #1a5276;
-      border-bottom: 2px solid #1a5276; padding-bottom: 4px; }
-    .popup-content table { width: 100%; border-collapse: collapse; }
-    .popup-content td { padding: 3px 5px; vertical-align: top; }
-    .popup-content td:first-child { font-weight: 600; color: #555; white-space: nowrap; width: 40%; }
-    .popup-content tr:nth-child(even) { background: #f5f9ff; }
-    .popup-source { font-size: 10px; color: #999; margin-top: 6px; text-align: right; }
-    .popup-loading { color: #666; font-style: italic; padding: 8px 0; }
-    .popup-error { color: #c00; padding: 6px 0; }
-    .badge { display: inline-block; padding: 2px 6px; border-radius: 10px;
-      font-size: 10px; font-weight: bold; color: white; margin-left: 4px; }
-    .badge-zec  { background: #005f87; }
-    .badge-zepa { background: #8b0000; }
-    .badge-lic  { background: #3a7c59; }
-    .badge-spa  { background: #8b4500; }
-    .badge-sci  { background: #4a4c8b; }
-    .badge-sac  { background: #005f87; }
+    /* Estado capas */
+    .layer-status{font-size:10px;margin-left:auto;padding:1px 5px;
+      border-radius:8px;font-weight:bold}
+    .ls-ok  {background:#d4edda;color:#155724}
+    .ls-err {background:#f8d7da;color:#721c24}
+    .ls-wait{background:#fff3cd;color:#856404}
+
+    /* Log diagnóstico */
+    #log{
+      background:#1a1a2e;color:#7fff7f;font-family:monospace;
+      font-size:10px;padding:8px;max-height:100px;overflow-y:auto;
+      border-top:1px solid #333;
+    }
+    #log .err{color:#ff6b6b}
+    #log .warn{color:#ffd93d}
+    #log .info{color:#6bcbff}
+
+    /* Popup */
+    .popup-wrap{font-size:12px;min-width:230px;max-width:340px;line-height:1.5}
+    .popup-wrap h4{
+      font-size:13px;margin:0 0 7px;color:#1a5276;
+      border-bottom:2px solid #1a5276;padding-bottom:4px
+    }
+    .popup-wrap table{width:100%;border-collapse:collapse}
+    .popup-wrap td{padding:2px 5px;vertical-align:top}
+    .popup-wrap td:first-child{
+      font-weight:600;color:#555;white-space:nowrap;
+      width:38%;background:#f5f9ff
+    }
+    .popup-wrap tr:nth-child(even) td:last-child{background:#fafafa}
+    .badge{
+      display:inline-block;padding:1px 7px;border-radius:10px;
+      font-size:10px;font-weight:bold;color:#fff;margin-left:4px;
+      vertical-align:middle
+    }
+    .b-zec {background:#005f87}
+    .b-zepa{background:#8b0000}
+    .b-lic {background:#3a7c59}
+    .b-spa {background:#7d3c00}
+    .popup-link{
+      display:block;margin-top:6px;font-size:10px;
+      color:#1a5276;text-align:right
+    }
+    .popup-src{font-size:10px;color:#999;margin-top:4px;text-align:right}
+    .popup-none{color:#888;font-style:italic;font-size:12px;padding:6px 0}
+    .popup-spin{color:#555;font-size:12px;padding:6px 0}
   </style>
 </head>
 <body>
-  <div id="map"></div>
+<div id="map"></div>
 
-  <div id="panel">
-    <h3>🌿 Red Natura 2000</h3>
+<div id="panel">
+  <div id="panel-header">🌿 Red Natura 2000</div>
+  <div id="panel-body">
     <label>
       <input type="checkbox" id="chk-eea" checked>
-      <span class="dot" style="background:#1a6eb5;opacity:.8"></span>EEA — Todos los espacios
+      <span class="dot" style="background:#1a6eb5"></span>
+      EEA — Todos los espacios
+      <span class="layer-status ls-wait" id="st-eea">…</span>
     </label>
+
+    <div style="color:#888;font-size:10px;margin:4px 0 2px 20px">
+      Capas MITECO (vía proxy CORS):
+    </div>
+
     <label>
       <input type="checkbox" id="chk-zec">
-      <span class="dot" style="background:#005f87;opacity:.8"></span>MITECO — ZEC
+      <span class="dot" style="background:#005f87"></span>
+      ZEC
+      <span class="layer-status ls-wait" id="st-zec">…</span>
     </label>
     <label>
       <input type="checkbox" id="chk-zepa">
-      <span class="dot" style="background:#8b0000;opacity:.8"></span>MITECO — ZEPA
+      <span class="dot" style="background:#8b0000"></span>
+      ZEPA
+      <span class="layer-status ls-wait" id="st-zepa">…</span>
     </label>
     <label>
       <input type="checkbox" id="chk-lic">
-      <span class="dot" style="background:#3a7c59;opacity:.8"></span>MITECO — LIC
+      <span class="dot" style="background:#3a7c59"></span>
+      LIC
+      <span class="layer-status ls-wait" id="st-lic">…</span>
     </label>
+
     <hr>
-    <div class="note">🖱 Haz clic sobre un espacio para ver sus datos</div>
-    <hr>
-    <div class="note">⚠ Capas MITECO requieren servidor web</div>
+    <div style="color:#666;font-size:10px;line-height:1.5">
+      🖱 Clic sobre espacio → datos<br>
+      Actualización: diciembre 2024
+    </div>
   </div>
+  <div id="log"></div>
+</div>
 
-  <script>
-    function loadCSS(href) {
-      var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href;
-      document.head.appendChild(l);
+<script>
+// ─── Utilidades ────────────────────────────────────────────────────
+var logEl = document.getElementById('log');
+function log(msg, cls) {
+  var d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = '▶ ' + msg;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function setStatus(id, text, cls) {
+  var el = document.getElementById('st-' + id);
+  el.textContent = text;
+  el.className = 'layer-status ' + cls;
+}
+
+// CORS proxy - redirige peticiones bloqueadas
+var PROXY = 'https://corsproxy.io/?';
+function proxify(url) { return PROXY + encodeURIComponent(url); }
+
+// ─── Carga dinámica de Leaflet ──────────────────────────────────────
+function loadCSS(h){var l=document.createElement('link');l.rel='stylesheet';l.href=h;document.head.appendChild(l)}
+function loadScript(src, cb) {
+  var s = document.createElement('script');
+  s.src = src;
+  s.onload = cb;
+  s.onerror = function(){ log('ERROR cargando Leaflet','err'); };
+  document.head.appendChild(s);
+}
+
+loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', initApp);
+
+// ─── Clase WMS con proxy CORS para tiles ───────────────────────────
+function makeProxiedWMS(url, opts) {
+  return L.TileLayer.WMS.extend({
+    getTileUrl: function(coords) {
+      var original = L.TileLayer.WMS.prototype.getTileUrl.call(this, coords);
+      return proxify(original);
     }
-    function loadScript(src, cb) {
-      var s = document.createElement('script'); s.src = src; s.onload = cb;
-      document.head.appendChild(s);
-    }
+  })(url, opts);
+}
 
-    // Construye la URL GetFeatureInfo para un WMS dado un click del mapa
-    function buildGetFeatureInfoURL(wmsUrl, layerName, latlng, map, version, infoFormat) {
-      var size   = map.getSize();
-      var bounds = map.getBounds();
-      var sw     = bounds.getSouthWest();
-      var ne     = bounds.getNorthEast();
+// ─── GetCapabilities → descubrir capas MITECO ─────────────────────
+var MITECO = 'https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura/wms.aspx';
+var EEA    = 'https://bio.discomap.eea.europa.eu/arcgis/services/ProtectedSites/Natura2000Sites/MapServer/WMSServer';
 
-      // En WMS 1.3.0 el orden del CRS:84 / EPSG:4326 es lat,lon → usamos CRS:84 (lon,lat)
-      var bbox = version === '1.3.0'
-        ? [sw.lat, sw.lng, ne.lat, ne.lng].join(',')
-        : [sw.lng, sw.lat, ne.lng, ne.lat].join(',');
-
-      var crs    = version === '1.3.0' ? 'CRS=CRS:84' : 'SRS=EPSG:4326';
-      var iParam = version === '1.3.0' ? 'I' : 'X';
-      var jParam = version === '1.3.0' ? 'J' : 'Y';
-
-      // Pixel del clic
-      var point = map.latLngToContainerPoint(latlng);
-
-      var params = [
-        'SERVICE=WMS',
-        'VERSION=' + version,
-        'REQUEST=GetFeatureInfo',
-        'LAYERS=' + layerName,
-        'QUERY_LAYERS=' + layerName,
-        'INFO_FORMAT=' + (infoFormat || 'application/json'),
-        crs,
-        'BBOX=' + bbox,
-        'WIDTH=' + size.x,
-        'HEIGHT=' + size.y,
-        iParam + '=' + Math.round(point.x),
-        jParam + '=' + Math.round(point.y),
-        'FEATURE_COUNT=5'
-      ];
-      return wmsUrl + '?' + params.join('&');
-    }
-
-    // Renderiza los datos de la EEA (respuesta GeoJSON o GML)
-    function renderEEA(data) {
-      var features = data && data.features;
-      if (!features || features.length === 0) return null;
-
-      var html = '';
-      features.forEach(function(f) {
-        var p = f.properties || {};
-        // Tipo de espacio
-        var tipo = p.SITETYPE || p.sitetype || p.SiteType || '';
-        var badgeClass = {
-          'A': 'badge-spa', 'B': 'badge-sci', 'C': 'badge-sac',
-          'SAC': 'badge-sac', 'SPA': 'badge-spa', 'SCI': 'badge-sci'
-        }[tipo] || 'badge-zec';
-        var tipoLabel = {
-          'A': 'SPA/ZEPA', 'B': 'SCI/LIC', 'C': 'SAC/ZEC'
-        }[tipo] || tipo;
-
-        html += '<h4>';
-        html += (p.SITENAME || p.sitename || p.SiteName || 'Espacio sin nombre');
-        if (tipo) html += ' <span class="badge ' + badgeClass + '">' + tipoLabel + '</span>';
-        html += '</h4>';
-        html += '<table>';
-
-        var campos = [
-          ['Código',        p.SITECODE  || p.sitecode  || p.SiteCode],
-          ['País',          p.MS        || p.ms        || p.Country],
-          ['Región biogeog.',p.REGION_NAME || p.RegionName],
-          ['Área (ha)',     p.AREAHA    || p.areaha    || p.AreaHa],
-          ['Año designación',p.DESIGNATD || p.Designatd],
-          ['Última actualiz.',p.DATECALC  || p.DateCalc],
-          ['% marinidad',   p.MARINE_AREA_PERCENTAGE],
-          ['Tipo hábitat',  p.HABTYPE   || p.HabType],
-        ];
-        campos.forEach(function(c) {
-          if (c[1] !== undefined && c[1] !== null && c[1] !== '') {
-            html += '<tr><td>' + c[0] + '</td><td>' + c[1] + '</td></tr>';
-          }
-        });
-        html += '</table>';
-        if (p.SITECODE || p.sitecode) {
-          var code = p.SITECODE || p.sitecode;
-          html += '<div class="popup-source"><a href="https://natura2000.eea.europa.eu/Natura2000/SDF.aspx?site=' + code + '" target="_blank">📄 Ver ficha estándar (EEA)</a></div>';
-        }
+function fetchCapabilities() {
+  log('Consultando GetCapabilities MITECO…', 'info');
+  var capUrl = proxify(MITECO + '?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0');
+  return fetch(capUrl)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(xml) {
+      log('Capabilities recibido (' + xml.length + ' bytes)');
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(xml, 'text/xml');
+      // Extraer capas con nombre
+      var names = [];
+      doc.querySelectorAll('Layer > Name').forEach(function(n) {
+        if (n.textContent.trim()) names.push(n.textContent.trim());
       });
-      return html || null;
+      log('Capas encontradas: ' + (names.join(', ') || 'ninguna'), names.length ? '' : 'warn');
+      return names;
+    })
+    .catch(function(e) {
+      log('GetCapabilities falló: ' + e.message, 'err');
+      // Fallback a nombres más probables según INSPIRE
+      return ['RN_LIC_ZEC_ZEPA', 'RN_ZEC', 'RN_ZEPA', 'RN_LIC',
+              'ZEC', 'ZEPA', 'LIC', 'PS.ProtectedSite'];
+    });
+}
+
+// ─── GetFeatureInfo ────────────────────────────────────────────────
+function buildGFI(wmsUrl, layers, latlng, map, version) {
+  var size   = map.getSize();
+  var bounds = map.getBounds();
+  var sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+  var pt = map.latLngToContainerPoint(latlng);
+
+  var params;
+  if (version === '1.3.0') {
+    // CRS:84 → BBOX = minLon,minLat,maxLon,maxLat
+    params = [
+      'SERVICE=WMS', 'VERSION=1.3.0', 'REQUEST=GetFeatureInfo',
+      'LAYERS=' + layers, 'QUERY_LAYERS=' + layers,
+      'INFO_FORMAT=text/html',
+      'CRS=CRS:84',
+      'BBOX=' + [sw.lng, sw.lat, ne.lng, ne.lat].join(','),
+      'WIDTH=' + size.x, 'HEIGHT=' + size.y,
+      'I=' + Math.round(pt.x), 'J=' + Math.round(pt.y),
+      'FEATURE_COUNT=5'
+    ];
+  } else {
+    params = [
+      'SERVICE=WMS', 'VERSION=1.1.1', 'REQUEST=GetFeatureInfo',
+      'LAYERS=' + layers, 'QUERY_LAYERS=' + layers,
+      'INFO_FORMAT=text/html',
+      'SRS=EPSG:4326',
+      'BBOX=' + [sw.lng, sw.lat, ne.lng, ne.lat].join(','),
+      'WIDTH=' + size.x, 'HEIGHT=' + size.y,
+      'X=' + Math.round(pt.x), 'Y=' + Math.round(pt.y),
+      'FEATURE_COUNT=5'
+    ];
+  }
+  return wmsUrl + '?' + params.join('&');
+}
+
+// Parsea respuesta HTML de ArcGIS WMS y extrae atributos
+function parseHtmlGFI(html) {
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  // ArcGIS devuelve tabla con th/td
+  var rows = tmp.querySelectorAll('tr');
+  if (!rows.length) {
+    // Puede que devuelva texto plano con "no features"
+    var txt = tmp.textContent.trim().toLowerCase();
+    if (txt.indexOf('no feature') >= 0 || txt.indexOf('no results') >= 0 || txt === '') return null;
+    return null;
+  }
+
+  var data = {};
+  rows.forEach(function(row) {
+    var cells = row.querySelectorAll('th,td');
+    if (cells.length >= 2) {
+      var key = cells[0].textContent.trim();
+      var val = cells[1].textContent.trim();
+      if (key && val) data[key] = val;
+    }
+  });
+  return Object.keys(data).length ? data : null;
+}
+
+// Parsea GML del MITECO
+function parseGmlGFI(text) {
+  if (!text || !text.trim()) return null;
+  var data = {};
+  var tags = [
+    'SITECODE','SITENAME','SITETYPE','AREAHA','DESIGNATD',
+    'REGION_NAME','SPECODE','MS','LATITUDE','LONGITUDE'
+  ];
+  tags.forEach(function(t) {
+    var m = text.match(new RegExp('<[^>]*:?' + t + '[^>]*>([^<]*)<', 'i'));
+    if (m && m[1].trim()) data[t] = m[1].trim();
+  });
+  return Object.keys(data).length ? data : null;
+}
+
+function renderData(data, source) {
+  if (!data) return null;
+
+  var labels = {
+    SITECODE: 'Código', SITENAME: 'Nombre', SITETYPE: 'Tipo',
+    AREAHA: 'Área (ha)', DESIGNATD: 'Designación', REGION_NAME: 'Región biog.',
+    SPECODE: 'Código especie', MS: 'País',
+    LATITUDE: 'Latitud', LONGITUDE: 'Longitud'
+  };
+
+  var name  = data.SITENAME || data.sitename || data['Site Name'] || data.Name || '';
+  var code  = data.SITECODE || data.sitecode || data['Site Code'] || data.Code || '';
+  var tipo  = data.SITETYPE || data.sitetype || data['Site Type'] || '';
+
+  var badgeMap = {
+    'A':'b-zepa','B':'b-lic','C':'b-zec',
+    'SAC':'b-zec','SPA':'b-zepa','SCI':'b-lic',
+    'ZEPA':'b-zepa','ZEC':'b-zec','LIC':'b-lic'
+  };
+  var labelMap = {
+    'A':'SPA/ZEPA','B':'SCI/LIC','C':'SAC/ZEC',
+    'SAC':'ZEC','SPA':'ZEPA','SCI':'LIC'
+  };
+  var bc = badgeMap[tipo] || badgeMap[tipo.toUpperCase()] || 'b-lic';
+  var bl = labelMap[tipo] || tipo;
+
+  var html = '<div class="popup-wrap">';
+  if (name) {
+    html += '<h4>' + name;
+    if (bl) html += ' <span class="badge ' + bc + '">' + bl + '</span>';
+    html += '</h4>';
+  }
+  html += '<table>';
+
+  // Intentar tanto con claves originales como normalizadas
+  var allKeys = Object.keys(data);
+  allKeys.forEach(function(k) {
+    var v = data[k];
+    if (!v || k === 'SITENAME' || k === 'sitename') return;
+    var label = labels[k.toUpperCase()] || k;
+    html += '<tr><td>' + label + '</td><td>' + v + '</td></tr>';
+  });
+
+  html += '</table>';
+
+  if (code) {
+    html += '<a class="popup-link" href="https://natura2000.eea.europa.eu/Natura2000/SDF.aspx?site=' +
+            code + '" target="_blank">📄 Ficha estándar EEA ↗</a>';
+  }
+  html += '<div class="popup-src">Fuente: ' + source + '</div>';
+  html += '</div>';
+  return html;
+}
+
+// ─── MAIN ──────────────────────────────────────────────────────────
+function initApp() {
+  log('Leaflet cargado. Iniciando mapa…', 'info');
+
+  var map = L.map('map').setView([40.4, -3.7], 6);
+
+  // Capa base
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 18
+  }).addTo(map);
+
+  var sat = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: '© Esri', maxZoom: 18 });
+
+  // ── Capa EEA (CORS OK, tiles directos) ───────────────────────────
+  var layerEEA = L.tileLayer.wms(EEA, {
+    layers: '0', format: 'image/png', transparent: true,
+    version: '1.3.0', opacity: 0.65,
+    attribution: '© <a href="https://www.eea.europa.eu">EEA</a>'
+  });
+
+  layerEEA.on('tileload', function() { setStatus('eea', '✓ OK', 'ls-ok'); });
+  layerEEA.on('tileerror', function(e) {
+    setStatus('eea', '✗ Error', 'ls-err');
+    log('EEA tile error: ' + (e.error || ''), 'err');
+  });
+  layerEEA.addTo(map);
+  log('Capa EEA añadida al mapa');
+
+  // ── Capas MITECO (via proxy CORS) ─────────────────────────────────
+  var wmsBase = {
+    format: 'image/png', transparent: true, version: '1.3.0',
+    opacity: 0.7, attribution: '© <a href="https://www.miteco.gob.es">MITECO</a>'
+  };
+
+  var mitecoLayers = {}; // se llenará tras GetCapabilities
+
+  fetchCapabilities().then(function(availableNames) {
+    // Intentar encontrar las capas ZEC, ZEPA, LIC por nombre
+    function findLayer(keywords) {
+      return availableNames.find(function(n) {
+        var nu = n.toUpperCase();
+        return keywords.some(function(k) { return nu.indexOf(k) >= 0; });
+      }) || availableNames[0] || null; // fallback al primer nombre disponible
     }
 
-    // Renderiza los datos del MITECO (GML o texto plano)
-    function renderMITECO(text) {
-      if (!text || text.trim() === '') return null;
-      // Intenta parsear GML/XML básico extrayendo campos clave
-      var fields = {};
-      var tags = ['SITECODE','SITENAME','SITETYPE','AREAHA','DESIGNATD','REGION_NAME','SPECODE'];
-      tags.forEach(function(tag) {
-        var re = new RegExp('<[^>]*:?' + tag + '[^>]*>([^<]+)<', 'i');
-        var m = text.match(re);
-        if (m) fields[tag] = m[1].trim();
-      });
+    var nameZEC  = findLayer(['ZEC']);
+    var nameZEPA = findLayer(['ZEPA']);
+    var nameLIC  = findLayer(['LIC']);
 
-      if (Object.keys(fields).length === 0) return null;
+    log('Usando capas: ZEC=' + nameZEC + ' ZEPA=' + nameZEPA + ' LIC=' + nameLIC);
 
-      var tipo = fields.SITETYPE || '';
-      var tipoLabel = { 'A': 'SPA/ZEPA', 'B': 'SCI/LIC', 'C': 'SAC/ZEC' }[tipo] || tipo;
-      var badgeClass = { 'A': 'badge-spa', 'B': 'badge-sci', 'C': 'badge-sac' }[tipo] || 'badge-zec';
-
-      var html = '<h4>' + (fields.SITENAME || 'Espacio Natura 2000');
-      if (tipoLabel) html += ' <span class="badge ' + badgeClass + '">' + tipoLabel + '</span>';
-      html += '</h4><table>';
-
-      var labels = { SITECODE:'Código', SITENAME:'Nombre', AREAHA:'Área (ha)',
-                     DESIGNATD:'Designación', REGION_NAME:'Región biogeog.', SPECODE:'Cód. especie' };
-      Object.keys(labels).forEach(function(k) {
-        if (fields[k]) html += '<tr><td>' + labels[k] + '</td><td>' + fields[k] + '</td></tr>';
-      });
-      html += '</table>';
-      if (fields.SITECODE) {
-        html += '<div class="popup-source"><a href="https://natura2000.eea.europa.eu/Natura2000/SDF.aspx?site=' + fields.SITECODE + '" target="_blank">📄 Ver ficha estándar (EEA)</a></div>';
+    function makeMitecoLayer(layerName, statusId) {
+      if (!layerName) {
+        setStatus(statusId, '✗ no encontrada', 'ls-err');
+        return null;
       }
-      return html;
+      var layer = makeProxiedWMS(MITECO, Object.assign({}, wmsBase, { layers: layerName }));
+      layer.on('tileload', function() { setStatus(statusId, '✓ OK', 'ls-ok'); });
+      layer.on('tileerror', function(e) {
+        setStatus(statusId, '✗ Error', 'ls-err');
+        log('MITECO (' + layerName + ') tile error', 'err');
+      });
+      return layer;
     }
 
-    function initMap() {
-      var map = L.map('map').setView([40.2, -3.5], 6);
+    mitecoLayers.zec  = makeMitecoLayer(nameZEC,  'zec');
+    mitecoLayers.zepa = makeMitecoLayer(nameZEPA, 'zepa');
+    mitecoLayers.lic  = makeMitecoLayer(nameLIC,  'lic');
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 18
-      }).addTo(map);
+    // Checkboxes controlan capas
+    function bindCheckbox(id, key) {
+      document.getElementById(id).addEventListener('change', function() {
+        var l = mitecoLayers[key];
+        if (!l) return;
+        if (this.checked) { l.addTo(map); log('Activada capa ' + key, 'info'); }
+        else map.removeLayer(l);
+      });
+    }
+    bindCheckbox('chk-zec',  'zec');
+    bindCheckbox('chk-zepa', 'zepa');
+    bindCheckbox('chk-lic',  'lic');
+  });
 
-      var sat = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: '© Esri', maxZoom: 18 }
-      );
+  document.getElementById('chk-eea').addEventListener('change', function() {
+    if (this.checked) layerEEA.addTo(map); else map.removeLayer(layerEEA);
+  });
 
-      // ── Capas WMS ──────────────────────────────────────────────
-      var EEA_URL    = 'https://bio.discomap.eea.europa.eu/arcgis/services/ProtectedSites/Natura2000Sites/MapServer/WMSServer';
-      var MITECO_URL = 'https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura/wms.aspx';
-      var wmsBase    = { format:'image/png', transparent:true, opacity:0.65 };
+  // ── Popup: GetFeatureInfo al hacer clic ──────────────────────────
+  var popup = L.popup({ maxWidth: 400, className: 'natura-popup' });
 
-      var layerEEA  = L.tileLayer.wms(EEA_URL,    Object.assign({}, wmsBase, { layers:'0', version:'1.3.0', attribution:'© EEA' }));
-      var layerZEC  = L.tileLayer.wms(MITECO_URL, Object.assign({}, wmsBase, { layers:'RN_ZEC',  version:'1.3.0', attribution:'© MITECO' }));
-      var layerZEPA = L.tileLayer.wms(MITECO_URL, Object.assign({}, wmsBase, { layers:'RN_ZEPA', version:'1.3.0', attribution:'© MITECO' }));
-      var layerLIC  = L.tileLayer.wms(MITECO_URL, Object.assign({}, wmsBase, { layers:'RN_LIC',  version:'1.3.0', attribution:'© MITECO' }));
+  map.on('click', function(e) {
+    popup.setLatLng(e.latlng)
+         .setContent('<div class="popup-wrap"><div class="popup-spin">⏳ Consultando…</div></div>')
+         .openOn(map);
 
-      layerEEA.addTo(map);
+    var promises = [];
+    var activeMitecoLayers = [];
 
-      // Registro de capas activas para saber qué consultar al clicar
-      var activeLayers = { eea: true, zec: false, zepa: false, lic: false };
-
-      function bindCheckbox(id, layer, key) {
-        document.getElementById(id).addEventListener('change', function() {
-          activeLayers[key] = this.checked;
-          if (this.checked) layer.addTo(map); else map.removeLayer(layer);
-        });
-      }
-      bindCheckbox('chk-eea',  layerEEA,  'eea');
-      bindCheckbox('chk-zec',  layerZEC,  'zec');
-      bindCheckbox('chk-zepa', layerZEPA, 'zepa');
-      bindCheckbox('chk-lic',  layerLIC,  'lic');
-
-      // ── GetFeatureInfo al hacer clic ───────────────────────────
-      var popup = L.popup({ maxWidth: 380, minWidth: 240 });
-
-      map.on('click', function(e) {
-        popup.setLatLng(e.latlng)
-             .setContent('<div class="popup-content"><div class="popup-loading">⏳ Consultando espacio…</div></div>')
-             .openOn(map);
-
-        var promises = [];
-
-        // Consulta a EEA si está activa
-        if (activeLayers.eea) {
-          var urlEEA = buildGetFeatureInfoURL(EEA_URL, '0', e.latlng, map, '1.3.0', 'application/geojson');
-          promises.push(
-            fetch(urlEEA)
-              .then(function(r) { return r.json(); })
-              .then(function(data) { return { source: 'EEA', html: renderEEA(data) }; })
-              .catch(function() { return { source: 'EEA', html: null }; })
-          );
-        }
-
-        // Consulta a MITECO si alguna capa suya está activa
-        var mitecoLayers = [];
-        if (activeLayers.zec)  mitecoLayers.push('RN_ZEC');
-        if (activeLayers.zepa) mitecoLayers.push('RN_ZEPA');
-        if (activeLayers.lic)  mitecoLayers.push('RN_LIC');
-
-        if (mitecoLayers.length > 0) {
-          var urlMITECO = buildGetFeatureInfoURL(MITECO_URL, mitecoLayers.join(','), e.latlng, map, '1.3.0', 'application/vnd.ogc.gml');
-          promises.push(
-            fetch(urlMITECO)
-              .then(function(r) { return r.text(); })
-              .then(function(text) { return { source: 'MITECO', html: renderMITECO(text) }; })
-              .catch(function() { return { source: 'MITECO', html: '<span class="popup-error">⚠ MITECO bloqueado por CORS (usa servidor web)</span>' }; })
-          );
-        }
-
-        if (promises.length === 0) {
-          popup.setContent('<div class="popup-content"><div class="popup-error">Activa alguna capa para consultar datos.</div></div>');
-          return;
-        }
-
-        Promise.all(promises).then(function(results) {
-          var combined = '';
-          var found = false;
-          results.forEach(function(r) {
-            if (r.html) {
-              combined += '<div class="popup-content">' + r.html;
-              combined += '<div class="popup-source">Fuente: ' + r.source + '</div></div>';
-              found = true;
+    // EEA GetFeatureInfo (sin proxy, CORS habilitado)
+    var eea = document.getElementById('chk-eea');
+    if (eea && eea.checked) {
+      var urlEEA = buildGFI(EEA, '0', e.latlng, map, '1.3.0');
+      log('GFI EEA: ' + urlEEA.substring(0, 80) + '…', 'info');
+      promises.push(
+        fetch(urlEEA)
+          .then(function(r) { return r.text(); })
+          .then(function(html) {
+            log('GFI EEA respuesta (' + html.length + ' bytes)');
+            var data = parseHtmlGFI(html);
+            if (!data) {
+              // ArcGIS a veces devuelve JSON aunque pedimos text/html
+              try {
+                var j = JSON.parse(html);
+                if (j.features && j.features[0]) {
+                  return { html: renderData(j.features[0].properties, 'EEA') };
+                }
+              } catch(e2) {}
             }
-          });
-
-          if (!found) {
-            combined = '<div class="popup-content"><div class="popup-error">No se encontraron espacios Natura 2000 en este punto.<br><small>Prueba a hacer clic directamente sobre un polígono coloreado.</small></div></div>';
-          }
-
-          if (popup.isOpen()) popup.setContent(combined);
-        });
-      });
-
-      // Control de capa base
-      L.control.layers(
-        { 'OpenStreetMap': map._layers[Object.keys(map._layers)[0]], 'Satélite': sat },
-        {},
-        { position: 'bottomright', collapsed: true }
-      ).addTo(map);
-
-      L.control.scale({ imperial: false }).addTo(map);
+            return { html: renderData(data, 'EEA') };
+          })
+          .catch(function(err) {
+            log('GFI EEA error: ' + err.message, 'err');
+            return { html: null };
+          })
+      );
     }
 
-    loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
-    loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', initMap);
-  </script>
+    // MITECO GetFeatureInfo (con proxy)
+    ['zec','zepa','lic'].forEach(function(key) {
+      var chk = document.getElementById('chk-' + key);
+      if (chk && chk.checked && mitecoLayers[key]) {
+        activeMitecoLayers.push(mitecoLayers[key].wmsParams.layers);
+      }
+    });
+
+    if (activeMitecoLayers.length) {
+      var allLayers = activeMitecoLayers.join(',');
+      var urlM = buildGFI(MITECO, allLayers, e.latlng, map, '1.3.0');
+      log('GFI MITECO: ' + urlM.substring(0, 80) + '…', 'info');
+      promises.push(
+        fetch(proxify(urlM))
+          .then(function(r) { return r.text(); })
+          .then(function(txt) {
+            log('GFI MITECO respuesta (' + txt.length + ' bytes)');
+            var data = parseGmlGFI(txt) || parseHtmlGFI(txt);
+            return { html: renderData(data, 'MITECO') };
+          })
+          .catch(function(err) {
+            log('GFI MITECO error: ' + err.message, 'err');
+            return { html: null };
+          })
+      );
+    }
+
+    if (!promises.length) {
+      popup.setContent('<div class="popup-wrap"><div class="popup-none">Activa al menos una capa para consultar.</div></div>');
+      return;
+    }
+
+    Promise.all(promises).then(function(results) {
+      var combined = results.map(function(r){ return r.html || ''; }).filter(Boolean).join('<hr style="margin:8px 0">');
+      popup.setContent(combined ||
+        '<div class="popup-wrap"><div class="popup-none">No hay espacios Natura 2000 en este punto.<br><small>Haz clic directamente sobre un polígono.</small></div></div>'
+      );
+    });
+  });
+
+  // Control de capa base
+  L.control.layers({'OSM': map._layers[Object.keys(map._layers)[0]], 'Satélite': sat},
+                   {}, {position:'bottomright', collapsed:true}).addTo(map);
+  L.control.scale({imperial:false}).addTo(map);
+
+  log('Mapa listo. Cargando GetCapabilities MITECO…', 'info');
+}
+</script>
 </body>
 </html>
