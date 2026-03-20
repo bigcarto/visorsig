@@ -1,32 +1,91 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mapa Red Natura 2000</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        #map { height: 600px; width: 100%; }
-    </style>
+  <meta charset="utf-8" />
+  <title>Mapa Red Natura 2000</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #map { height: 100vh; width: 100%; }
+    #loading {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 16px; color: #555; z-index: 9999;
+    }
+    .info-box {
+      position: absolute; bottom: 30px; left: 10px;
+      z-index: 1000; background: white;
+      padding: 8px 12px; border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      font-size: 12px; max-width: 280px;
+    }
+    .legend-dot {
+      display: inline-block; width: 12px; height: 12px;
+      border-radius: 2px; margin-right: 5px; vertical-align: middle;
+    }
+  </style>
 </head>
 <body>
-    <div id="map"></div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // Crear el mapa centrado en España
-        var map = L.map('map').setView([40.4167, -3.7033], 6);
-
-        // Añadir una capa base (OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        // Añadir la capa WMS de la Red Natura
-        var redNatura = L.tileLayer.wms('https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura', {
-            layers: 'RN_ZEC,RN_ZEPA', // Capas principales (Zonas Especial Conservación y Protección Aves)
-            format: 'image/png',
-            transparent: true,
-            attribution: 'Ministerio para la Transición Ecológica'
-        }).addTo(map);
-    </script>
+  <div id="loading">Cargando mapa…</div>
+  <div id="map"></div>
+  <script>
+    function loadCSS(href) {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet'; link.href = href;
+      document.head.appendChild(link);
+    }
+    function loadScript(src, callback) {
+      var script = document.createElement('script');
+      script.src = src;
+      script.onload = callback;
+      script.onerror = function() {
+        document.getElementById('loading').textContent = 'Error cargando Leaflet. Comprueba la conexión.';
+      };
+      document.head.appendChild(script);
+    }
+    function initMap() {
+      document.getElementById('loading').style.display = 'none';
+      var map = L.map('map').setView([40.4167, -3.7033], 6);
+      var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
+      });
+      var satelite = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri', maxZoom: 19
+      });
+      osm.addTo(map);
+      var WMS_URL = 'https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura/wms.aspx';
+      var wmsOpts = {
+        format: 'image/png', transparent: true, version: '1.3.0',
+        attribution: '© <a href="https://www.miteco.gob.es">MITECO</a> — CC BY 4.0',
+        opacity: 0.75
+      };
+      var zec  = L.tileLayer.wms(WMS_URL, Object.assign({}, wmsOpts, { layers: 'RN_ZEC'  }));
+      var zepa = L.tileLayer.wms(WMS_URL, Object.assign({}, wmsOpts, { layers: 'RN_ZEPA' }));
+      var lic  = L.tileLayer.wms(WMS_URL, Object.assign({}, wmsOpts, { layers: 'RN_LIC'  }));
+      zec.addTo(map); zepa.addTo(map); lic.addTo(map);
+      L.control.layers(
+        { 'OpenStreetMap': osm, 'Satélite (ESRI)': satelite },
+        {
+          'ZEC — Zonas Especial Conservación':     zec,
+          'ZEPA — Zonas Especial Protección Aves': zepa,
+          'LIC — Lugares Importancia Comunitaria': lic
+        },
+        { collapsed: false }
+      ).addTo(map);
+      L.control.scale({ imperial: false }).addTo(map);
+      var legend = document.createElement('div');
+      legend.className = 'info-box';
+      legend.innerHTML =
+        '<strong>Red Natura 2000 — MITECO</strong><br>' +
+        '<span class="legend-dot" style="background:#005f87;border:1px solid #003d5c"></span> ZEC<br>' +
+        '<span class="legend-dot" style="background:#8b0000;border:1px solid #5a0000"></span> ZEPA<br>' +
+        '<span class="legend-dot" style="background:#4a7c59;border:1px solid #2d5c3b"></span> LIC<br><br>' +
+        '<em style="color:#666">Fuente: © MITECO — CC BY 4.0</em>';
+      document.body.appendChild(legend);
+    }
+    loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+    loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', initMap);
+  </script>
 </body>
 </html>
+
