@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mapa Red Natura 2000</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Crear el mapa centrado en España
+        var map = L.map('map').setView([40.4167, -3.7033], 6);
+
+        // Añadir una capa base (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Añadir la capa WMS de la Red Natura
+        var redNatura = L.tileLayer.wms('https://wms.mapama.gob.es/sig/Biodiversidad/RedNatura', {
+            layers: 'RN_ZEC,RN_ZEPA', // Capas principales (Zonas Especial Conservación y Protección Aves)
+            format: 'image/png',
+            transparent: true,
+            attribution: 'Ministerio para la Transición Ecológica'
+        }).addTo(map);
+    </script>
+</body>
+</html>
